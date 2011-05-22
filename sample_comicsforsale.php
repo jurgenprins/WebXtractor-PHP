@@ -8,7 +8,7 @@
 	// next urls as determined by navigation (pages 2, 3, ..)
 	// then render the results as one big list of comics for sale
 	//
-	// The results will also be matched against a catalog of titles
+	// The results will also be fuzzy matched against a catalog of titles
 	// using very basic extractor utility function to find closest 
 	// string match. Idea is to expand the functionality of 
 	
@@ -28,7 +28,7 @@
 		die ("no results");
 	}
 
-	// As bonus we will match found link titles against a catalog.
+	// As bonus we will fuzzy match found link titles against a catalog.
 	// When there is a match, the catalog title will be displayed in 
 	// result column..
 	$comicTitles = array(
