@@ -18,7 +18,7 @@
  			return function ($wxUrl, $strHtml) use (&$self, $wxOfferExtractor) {
  				WebXtractor_Logger::debug("LIB INDEX: READ SUCCESS " . $wxUrl->getUrl() . ' ' . strlen($strHtml) . ' bytes');
  				
-				if (!($res = $wxOfferExtractor->process($wxUrl, $strHtml))) {
+				if (!($parsedStruct = $wxOfferExtractor->process($wxUrl, $strHtml))) {
 					$self->wxIndexBoard->setStatus($wxUrl->getUrl(), WebXtractor_Indexer_Board::STATUS_FAILED);
 				}
 				
@@ -26,7 +26,7 @@
 			
 				if ($self->wxIndexBoard->size() <= $self->intMaxFollowPaginatedLinks) {
 					// Get next links to follow for further indexing
-					$arrLinksToFollow = $wxOfferExtractor->getNextLinks($res);
+					$arrLinksToFollow = $wxOfferExtractor->getNextLinks($parsedStruct);
 					WebXtractor_Logger::debug('LIB INDEX: ' . count($arrLinksToFollow) . ' NEXT LINKS FOUND');
 					
 					foreach($arrLinksToFollow as $strLinkToFollow) {
@@ -37,6 +37,8 @@
 						$self->wxIndexBoard->setStatus($strLinkToFollow, WebXtractor_Indexer_Board::STATUS_QUEUED);
 					}
 				}
+				
+				return $parsedStruct;
 			};
 		}
 		

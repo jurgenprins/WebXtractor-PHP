@@ -284,6 +284,9 @@
 		  	      ($strHref = $linkNodeHref->nodeValue)) {
 	  				if (substr($strHref, 0, 1) == '#') continue;
 	  				if (substr($strHref, 0, 11) == 'javascript:') continue;
+	  				if (($i = strpos($strHref, '#')) !== false) {
+	  					$strHref = substr($strHref, 0, $i);
+	  				}
 	  	
 	  				$arrPath = explode('/', html_entity_decode(parse_url($strHref, PHP_URL_PATH)));
 						// WebXtractor_Logger::debug('HTML PARSER: PAGINATOR: ' . join('*', $arrPath));
