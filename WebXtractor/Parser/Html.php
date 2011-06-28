@@ -213,7 +213,8 @@
 			$arrStructure = $this->getStructure();
 			$arrStructureImages = $arrStructure['images'];
 			
-			$this->arrImages = array();
+			$arrImages = array();	
+			$maxVariance = 0; $maxCount = 0;
 			foreach($arrStructureImages as $intNumOccurs => $arrImageXPaths) {
 				foreach($arrImageXPaths as $strImageXPath => $arrData) {
 					$arrPageBlock = array(
@@ -255,8 +256,7 @@
 		  					'src' => ($strResolvedSrc = $this->wxUrl->resolveRelative($strSrc)),
 		  					'href' => $this->wxUrl->resolveRelative($strHref),
 		  				);
-		  				
-							$arrPageBlock['images'][$arrPageImage['src']]	= $arrPageImage;
+		  				$arrPageBlock['images'][$arrPageImage['src']]	= $arrPageImage;
 							
 							$intDepth = substr_count($strResolvedSrc, '/') + substr_count($strResolvedSrc, '?') + substr_count($strResolvedSrc, '#');
 							if ($intPrevPageImageDepth >= 0) {
@@ -264,13 +264,26 @@
 							}
 							$intPrevPageImageDepth = $intDepth;
 		  			}
-		  		}
+		  		} 
 		  		
-		  		$this->arrImages[sprintf("%08d", $arrPageBlock['variance']) . sprintf("%02d", count($this->arrImages))] = $arrPageBlock;
+		  		$arrImages[] = $arrPageBlock;
+		  		$maxVariance 	= max($maxVariance, $arrPageBlock['variance']);
+					$maxCount 		= max($maxCount, 		count($arrPageBlock['images']));
 				}
 			}
 			
-			ksort($this->arrImages);
+			if ($maxVariance == 0) $maxVariance = 1;
+			if ($maxCount == 0) $maxCount = 1;
+			
+			$this->arrImages = array();
+			foreach($arrImages as $arrPageBlock) {
+				$normVariance = 1 - ($arrPageBlock['variance'] / $maxVariance);
+				if ($normVariance == 0) $normVariance = 0.1;
+				$normCount		= count($arrPageBlock['images']) / $maxCount;
+				$this->arrImages[sprintf("%02d", ((2 * $normCount) * (0.5 * $normVariance)) * 100) . sprintf("%02d", count($this->arrImages))] = $arrPageBlock;
+			}
+			
+			krsort($this->arrImages);
 			return $this->arrImages;
 		}
 		
