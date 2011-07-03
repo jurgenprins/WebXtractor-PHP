@@ -25,7 +25,7 @@
 					break;
 				default:
 					$wxExtractor->setAllowLinkBlockOffers(1);
-					$wxExtractor->setMinLinkBlockOffers(10);
+					$wxExtractor->setMinLinkBlockOffers(5);
 					$wxExtractor->setAllowImageBlockOffers(0);
 			}
 			

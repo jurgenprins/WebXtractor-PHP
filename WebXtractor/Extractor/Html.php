@@ -17,7 +17,7 @@
 				if (!$strTitle) {
 					$strTitle = $arrText['text'];
 				} else {
-					$strText .= $arrText['text'];
+					$strText .= ($strText ? ' | ' : '') . $arrText['text'];
 				}
 			}
 			return new WebXtractor_Extractor_Object($wxUrl, $arrLink['href'], $strTitle, '', $strText);

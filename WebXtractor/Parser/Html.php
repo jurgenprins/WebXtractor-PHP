@@ -48,7 +48,7 @@
 			$child = $node->firstChild;
 			while($child) {
 				$arrPaths[] = ($newpath = "{$path}/{$child->nodeName}");
-				
+			
 				if ($child->hasChildNodes()) {
 					$arrPaths = array_merge($arrPaths, $this->getXpaths($child, $newpath));
 				}
@@ -60,8 +60,8 @@
 	
 		function getTitle() {
 			$strTitle = '';
-			$titleElements = $this->xpath->query('//title');
-			if (!is_null($titleElements)) {
+			$titleElements = @$this->xpath->query('//title');
+			if (!is_null($titleElements) && $titleElements) {
 				foreach($titleElements as $titleElement) {
 					$strTitle = trim($titleElement->nodeValue);
 					break;
@@ -83,8 +83,8 @@
 					switch($strTag) {
 						case 'a':
 							$this->arrStructure['links'][$intNumOccurs][$strElementXPath] = array();
-							$linkElements = $this->xpath->query($strElementXPath);
-							if (!is_null($linkElements)) {
+							$linkElements = @$this->xpath->query($strElementXPath);
+							if (!is_null($linkElements) && $linkElements) {
 				  			foreach ($linkElements as $linkElement) {
 				  				if (($linkStyle = $linkElement->attributes->getNamedItem('style')) &&
 				  				    (strstr($linkStyle->nodeValue, 'background-image'))) {
@@ -120,18 +120,22 @@
 							$strRelativeTextXPath = '.' . str_replace('#text', 'text()', substr($strTextXPath, strlen($strLinkXPath)));
 							$this->arrStructure['links'][$intNumOccurs][$strLinkXPath]['texts'][$strRelativeTextXPath] = $this->arrNumXPaths[$strTextXPath];
 						} else {
-							// If text is occuring within 10% as much as links, then include, even though its xpath might be higher than link
-							if (abs($intNumOccurs - $this->arrNumXPaths[$strTextXPath]) < ($intNumOccurs / 10)) {
+							// If text is occuring within 15% as much as links, then include, even though its xpath might be higher than link
+							if (abs($intNumOccurs - $this->arrNumXPaths[$strTextXPath]) < ($intNumOccurs / 9)) {
+								
 								$arrDecomposedTextXPath = explode('/', $strTextXPath);
 								$arrDecomposedLinkXPath = explode('/', $strLinkXPath);
 								for ($i = 0; $i < count($arrDecomposedLinkXPath); $i++) {
 									if ($arrDecomposedTextXPath[$i] != $arrDecomposedLinkXPath[$i]) break;
 								}
 								$arrSpecificLinkPartsXPath = array_slice($arrDecomposedLinkXPath, $i);
+																
 								// Do not include text xpaths more than a 3rd the depth of total link xpath away
 								if (count($arrSpecificLinkPartsXPath) > (count($arrDecomposedLinkXPath) / 3)) {
 									continue;
 								}
+								
+
 								$strRelativeTextXPath = str_repeat('../', count($arrSpecificLinkPartsXPath));
 								$arrSpecificTextPartsXPath = array_slice($arrDecomposedTextXPath, $i);
 								$strRelativeTextXPath .= str_replace('#text', 'text()', join('/', $arrSpecificTextPartsXPath));
@@ -151,15 +155,18 @@
 			$arrStructure = $this->getStructure();
 			$arrStructureLinks = $arrStructure['links'];
 			
-			$this->arrLinks = array();
+			$arrLinks = array();
+			$maxTextLength = 0; $maxCount = 0;
 			foreach($arrStructureLinks as $intNumOccurs => $arrLinkXPaths) {
 				foreach($arrLinkXPaths as $strLinkXPath => $arrData) {
 					$arrPageBlock = array(
 						'xpath' => array('expr' => $strLinkXPath, 'occurs' => $intNumOccurs),
-						'links' => array()
+						'links' => array(),
+						'avg_text_length' => 0
 					);
-					$linkElements = $this->xpath->query($strLinkXPath);
-					if (!is_null($linkElements)) {
+					$linkElements 		= @$this->xpath->query($strLinkXPath);
+					$totalTextLength 	= 0;
+					if (!is_null($linkElements) && $linkElements) {
 		  			foreach ($linkElements as $linkElement) {
 		  				$strHref = '';
 		  				if (($imageHref = $linkElement->attributes->getNamedItem('href')) &&
@@ -177,11 +184,12 @@
 		  					switch($strItem) {
 		  						case 'texts':
 										foreach($arrItemXPaths as $strRelativeTextXPath => $intNumOccurs) {
-											$textElements = $this->xpath->query($strRelativeTextXPath, $linkElement);
-											if (!is_null($textElements)) {
+											$textElements = @$this->xpath->query($strRelativeTextXPath, $linkElement);
+											if (!is_null($textElements) && $textElements) {
 								  			foreach ($textElements as $textElement) {
 								  				$strText = preg_replace("/[\n\r\t ]+/", " ", trim($textElement->nodeValue));
 								  				if (strlen($strText) < 1) continue;
+								  				$totalTextLength += strlen($strText);
 								  				$arrPageText = array(
 								  					'xpath' => array('expr' => $strRelativeTextXPath, 'occurs' => $intNumOccurs),
 								  					'text' => $strText
@@ -199,8 +207,24 @@
 		  			}
 		  		}
 		  		
-		 			$this->arrLinks[sprintf("%08d", count($arrPageBlock['links'])) . sprintf("%02d", count($this->arrLinks))] = $arrPageBlock;
+		  		if (count($arrPageBlock['links'])) {
+		  			$arrPageBlock['avg_text_length'] = round($totalTextLength / count($arrPageBlock['links']));
+		  		}
+		  		
+		  		$arrLinks[] = $arrPageBlock;
+		  		$maxTextLength 	= max($maxTextLength, $arrPageBlock['avg_text_length']);
+					$maxCount 			= max($maxCount, 			count($arrPageBlock['links']));
 				}
+			}
+			
+			if ($maxTextLength == 0) 	$maxTextLength = 1;
+			if ($maxCount == 0) 			$maxCount = 1;
+			
+			$this->arrLinks = array();
+			foreach($arrLinks as $arrPageBlock) {
+				$normTextLength	= $arrPageBlock['avg_text_length'] / $maxTextLength;
+				$normCount			= count($arrPageBlock['links']) / $maxCount;
+				$this->arrLinks[sprintf("%02d", ((2 * $normTextLength) * (0.5 * $normCount)) * 100) . sprintf("%02d", count($this->arrLinks))] = $arrPageBlock;
 			}
 			
 			krsort($this->arrLinks);
@@ -223,8 +247,8 @@
 						'variance' => 0
 					);
 					$intPrevPageImageDepth = -1;
-					$imageElements = $this->xpath->query($strImageXPath);
-					if (!is_null($imageElements)) {
+					$imageElements = @$this->xpath->query($strImageXPath);
+					if (!is_null($imageElements) && $imageElements) {
 		  			foreach ($imageElements as $imageElement) {
 		  				if ($imageSrc = $imageElement->attributes->getNamedItem('src')) {
 		  					$strSrc = trim($imageSrc->nodeValue);
@@ -272,8 +296,8 @@
 				}
 			}
 			
-			if ($maxVariance == 0) $maxVariance = 1;
-			if ($maxCount == 0) $maxCount = 1;
+			if ($maxVariance == 0) 	$maxVariance = 1;
+			if ($maxCount == 0) 		$maxCount = 1;
 			
 			$this->arrImages = array();
 			foreach($arrImages as $arrPageBlock) {
@@ -290,8 +314,8 @@
 		function getPaginator() {
 			$arrLinks = array();
 			
-			$linkElements = $this->xpath->query('//a');
-			if (!is_null($linkElements)) {
+			$linkElements = @$this->xpath->query('//a');
+			if (!is_null($linkElements) && $linkElements) {
   			foreach ($linkElements as $linkElement) {
   				if (($linkNodeHref = $linkElement->attributes->getNamedItem('href')) &&
 		  	      ($strHref = $linkNodeHref->nodeValue)) {

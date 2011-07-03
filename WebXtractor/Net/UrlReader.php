@@ -12,6 +12,7 @@
 		function getCurl() {
 			$c = curl_init();
 			curl_setopt($c, CURLOPT_RETURNTRANSFER, true);
+			curl_setopt($c, CURLOPT_FOLLOWLOCATION, true);
 			curl_setopt($c, CURLOPT_NOSIGNAL, 1);
 			curl_setopt($c, CURLOPT_NOPROGRESS, 1);
 			curl_setopt($c, CURLOPT_FAILONERROR, 1);

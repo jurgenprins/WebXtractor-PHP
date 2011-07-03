@@ -1,13 +1,13 @@
 <?
 	class WebXtractor_Indexer_Map {
-		private $map;
+		private $map = array();
 		
 		function put($strKey, $val) {
 			$this->map[$strKey] = $val;
 		}
 		
 		function get($strKey) {
-			return $this->map[$strKey];
+			return array_key_exists($strKey, $this->map) ? $this->map[$strKey] : null;
 		}
 		
 		function contains($strKey) {
